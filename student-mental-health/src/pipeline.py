@@ -31,13 +31,7 @@ def preprocess_data():
     X = data.drop(columns=["Student_ID", "Mental_Health_Risk"])
     y = data["Mental_Health_Risk"]
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.20,
-        random_state=42,
-        stratify=y,
-    )
+    X_train, X_test, y_train, y_test = split_raw_data(X, y)
 
     numeric_columns = X_train.select_dtypes(include="number").columns.tolist()
     categorical_columns = X_train.select_dtypes(exclude="number").columns.tolist()
@@ -81,17 +75,30 @@ def preprocess_data():
         columns=categorical_names,
         index=X_test.index,
     )
-    X_train_processed = pd.concat([X_train_numeric, X_train_categorical], axis=1)
-    X_test_processed = pd.concat([X_test_numeric, X_test_categorical], axis=1)
-    X_train_processed.to_csv(PROCESSED_DIR / "X_train.csv", index=False)
-    X_test_processed.to_csv(PROCESSED_DIR / "X_test.csv", index=False)
+    pd.concat([X_train_numeric, X_train_categorical], axis=1).to_csv(
+        PROCESSED_DIR / "X_train.csv", index=False
+    )
+    pd.concat([X_test_numeric, X_test_categorical], axis=1).to_csv(
+        PROCESSED_DIR / "X_test.csv", index=False
+    )
     y_train.to_frame(name="Mental_Health_Risk").to_csv(
         PROCESSED_DIR / "y_train.csv", index=False
     )
     y_test.to_frame(name="Mental_Health_Risk").to_csv(
         PROCESSED_DIR / "y_test.csv", index=False
     )
+    return X_train, X_test, y_train, y_test
 
+
+def split_raw_data(X, y):
+    """Create the same reproducible 80/20 split used by preprocessing."""
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.20,
+        random_state=42,
+        stratify=y,
+    )
     return X_train, X_test, y_train, y_test
 
 
@@ -105,7 +112,7 @@ def load_processed_data():
 
 
 def train_model(X_train, y_train):
-    """Tune Logistic Regression and Random Forest using training data only."""
+    """Tune two models using the processed training data."""
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     searches = {
         "Logistic Regression": GridSearchCV(
@@ -168,8 +175,14 @@ def save_model(model):
     return MODEL_PATH
 
 
+def load_model():
+    """Load the saved trained model."""
+    return joblib.load(MODEL_PATH)
+
+
 def run_pipeline():
     """Preprocess current data, train, evaluate, and save the model."""
+    preprocess_data()
     preprocess_data()
     X_train, X_test, y_train, y_test = load_processed_data()
     best_name, model, searches = train_model(X_train, y_train)

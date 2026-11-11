@@ -5,7 +5,12 @@ import pandas as pd
 import seaborn as sns
 import streamlit as st
 
-from src.pipeline import MODEL_PATH, evaluate_model, load_processed_data
+from src.pipeline import (
+    MODEL_PATH,
+    evaluate_model,
+    load_model,
+    load_processed_data,
+)
 
 
 st.set_page_config(page_title="Student Mental Health Risk", layout="wide")
@@ -14,13 +19,6 @@ st.warning(
     "Educational prototype only. This is not a medical diagnosis or a tool "
     "for making decisions about real students."
 )
-
-
-@st.cache_resource
-def load_model():
-    import joblib
-
-    return joblib.load(MODEL_PATH)
 
 
 @st.cache_data
@@ -66,12 +64,14 @@ with st.form("prediction_form"):
     values = {}
     columns = st.columns(2)
     for index, name in enumerate(X_test.columns):
-        default = float(X_test[name].median())
-        values[name] = columns[index % 2].number_input(
-            name,
-            value=default,
-            format="%.3f",
-        )
+        if pd.api.types.is_numeric_dtype(X_test[name]):
+            values[name] = columns[index % 2].number_input(
+                name, value=float(X_test[name].median()), format="%.2f"
+            )
+        else:
+            values[name] = columns[index % 2].selectbox(
+                name, sorted(X_test[name].dropna().unique())
+            )
     submitted = st.form_submit_button("Predict")
 
 if submitted:

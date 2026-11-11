@@ -5,6 +5,7 @@ from airflow.operators.python import PythonOperator
 
 from src.pipeline import (
     evaluate_model,
+    load_model,
     load_processed_data,
     preprocess_data,
     save_model,
@@ -20,7 +21,7 @@ def prepare_data():
 
 def train():
     """Train and select the best model."""
-    X_train, _, y_train, _ = load_processed_data()
+    X_train, _, y_train, _ = preprocess_data()
     best_name, model, searches = train_model(X_train, y_train)
     save_model(model)
     print(f"Selected model: {best_name}")
@@ -29,8 +30,8 @@ def train():
 
 def evaluate():
     """Evaluate the saved training result on the independent test data."""
-    X_train, X_test, y_train, y_test = load_processed_data()
-    _, model, _ = train_model(X_train, y_train)
+    _, X_test, _, y_test = load_processed_data()
+    model = load_model()
     metrics, matrix = evaluate_model(model, X_test, y_test)
     print("Metrics:", metrics)
     print("Confusion matrix:\n", matrix)
