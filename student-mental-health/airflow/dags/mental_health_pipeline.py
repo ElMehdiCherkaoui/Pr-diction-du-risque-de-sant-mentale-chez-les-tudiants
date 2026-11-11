@@ -20,7 +20,7 @@ def prepare_data():
 
 def train():
     X_train, _, y_train, _ = load_processed_data()
-    best_name, model, _ = train_model(X_train, y_train)
+    best_name, model = train_model(X_train, y_train)
     save_model(model)
     print(f"Selected model: {best_name}")
 

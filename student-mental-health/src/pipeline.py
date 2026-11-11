@@ -19,10 +19,10 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from pathlib import Path
 
 
-
-RAW_DATA_PATH = Path('/home/mestry/Documents/youcode/Pr-diction-du-risque-de-sant-mentale-chez-les-tudiants/student-mental-health/data/raw/student_mental_health.csv')
-PROCESSED_DIR = Path('/home/mestry/Documents/youcode/Pr-diction-du-risque-de-sant-mentale-chez-les-tudiants/student-mental-health/data/processed')
-MODEL_PATH = Path('/home/mestry/Documents/youcode/Pr-diction-du-risque-de-sant-mentale-chez-les-tudiants/student-mental-health/models/student_mental_health_pipeline.joblib')
+ROOT_DIR = Path(__file__).resolve().parents[1]
+RAW_DATA_PATH = ROOT_DIR / "data" / "raw" / "student_mental_health.csv"
+PROCESSED_DIR = ROOT_DIR / "data" / "processed"
+MODEL_PATH = ROOT_DIR / "models" / "student_mental_health_pipeline.joblib"
 
 
 def preprocess_data():
@@ -156,7 +156,6 @@ def load_model():
 
 
 def run_pipeline():
-    preprocess_data()
     preprocess_data()
     X_train, X_test, y_train, y_test = load_processed_data()
     best_name, model = train_model(X_train, y_train)
