@@ -99,7 +99,6 @@ def preprocess_data():
 
 
 def load_processed_data():
-    """Load the four processed CSV files."""
     X_train = pd.read_csv(PROCESSED_DIR / "X_train.csv")
     X_test = pd.read_csv(PROCESSED_DIR / "X_test.csv")
     y_train = pd.read_csv(PROCESSED_DIR / "y_train.csv").squeeze("columns")
@@ -108,42 +107,24 @@ def load_processed_data():
 
 
 def train_model(X_train, y_train):
-    """Tune two models using the processed training data."""
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    searches = {
-        "Logistic Regression": GridSearchCV(
-            Pipeline(
-                [("model", LogisticRegression(max_iter=2000, random_state=42))]
-            ),
-            {"model__C": [0.1, 1, 10], "model__class_weight": [None, "balanced"]},
-            scoring="f1_macro",
-            cv=cv,
-            n_jobs=-1,
-        ),
-        "Random Forest": GridSearchCV(
-            Pipeline([("model", RandomForestClassifier(random_state=42))]),
-            {
-                "model__n_estimators": [100, 200],
-                "model__max_depth": [None, 10],
-                "model__min_samples_leaf": [1, 2],
-            },
-            scoring="f1_macro",
-            cv=cv,
-            n_jobs=-1,
-        ),
-    }
 
-    results = {}
-    for name, search in searches.items():
-        search.fit(X_train, y_train)
-        results[name] = search
+    lr = GridSearchCV(
+        LogisticRegression(max_iter=2000, random_state=42),
+        {
+            "C": [0.01, 0.1, 0.5, 1, 2, 3, 4, 5, 10, 100],
+            "class_weight": [None, "balanced"]
+        },
+        cv=5,
+        scoring="f1_macro"
+    )
 
-    best_name = max(results, key=lambda name: results[name].best_score_)
-    return best_name, results[best_name].best_estimator_, results
+    lr.fit(X_train, y_train)
+    best_model = lr.best_estimator_
+    best_name = "Logistic Regression"
+    return best_name, best_model
 
 
 def evaluate_model(model, X_test, y_test):
-    """Calculate final metrics and the confusion matrix."""
     predictions = model.predict(X_test)
     probabilities = model.predict_proba(X_test)
     classes = model.classes_
@@ -165,32 +146,27 @@ def evaluate_model(model, X_test, y_test):
 
 
 def save_model(model):
-    """Save the complete trained pipeline."""
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, MODEL_PATH)
     return MODEL_PATH
 
 
 def load_model():
-    """Load the saved trained model."""
     return joblib.load(MODEL_PATH)
 
 
 def run_pipeline():
-    """Preprocess current data, train, evaluate, and save the model."""
     preprocess_data()
     preprocess_data()
     X_train, X_test, y_train, y_test = load_processed_data()
-    best_name, model, searches = train_model(X_train, y_train)
+    best_name, model = train_model(X_train, y_train)
     metrics, matrix = evaluate_model(model, X_test, y_test)
     save_model(model)
     return {
         "model_name": best_name,
         "metrics": metrics,
         "confusion_matrix": matrix,
-        "cv_scores": {
-            name: search.best_score_ for name, search in searches.items()
-        },
+        "cv_scores": model.cv_results_ if hasattr(model, "cv_results_") else None,
     }
 
 
