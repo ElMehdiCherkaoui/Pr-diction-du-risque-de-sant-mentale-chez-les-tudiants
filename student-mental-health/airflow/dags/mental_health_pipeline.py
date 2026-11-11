@@ -14,22 +14,18 @@ from src.pipeline import (
 
 
 def prepare_data():
-    """Prepare the current raw data and save processed CSV files."""
     preprocess_data()
     print("Raw data was preprocessed and saved.")
 
 
 def train():
-    """Train and select the best model."""
-    X_train, _, y_train, _ = preprocess_data()
-    best_name, model, searches = train_model(X_train, y_train)
+    X_train, _, y_train, _ = load_processed_data()
+    best_name, model, _ = train_model(X_train, y_train)
     save_model(model)
     print(f"Selected model: {best_name}")
-    print({name: search.best_score_ for name, search in searches.items()})
 
 
 def evaluate():
-    """Evaluate the saved training result on the independent test data."""
     _, X_test, _, y_test = load_processed_data()
     model = load_model()
     metrics, matrix = evaluate_model(model, X_test, y_test)
@@ -39,8 +35,8 @@ def evaluate():
 
 with DAG(
     dag_id="student_mental_health_pipeline",
-    start_date=datetime(2026, 1, 1),
-    schedule="@weekly",
+    start_date=datetime(2026, 11, 11),
+    schedule="@daily",
     catchup=False,
     tags=["student-mental-health"],
 ) as dag:

@@ -35,7 +35,18 @@ Open `http://localhost:8501`.
 docker compose up --build
 ```
 
-The application also uses port `8501`.
+Open Streamlit at `http://localhost:8501`.
+
+Open Airflow at `http://localhost:8080`.
+Use username `admin` and password `admin`.
+
+The Airflow DAG is paused when it is first created. Open Airflow, turn on
+`student_mental_health_pipeline`, and click the play button to run it.
+
+The services use separate ports:
+
+- Streamlit: `8501`
+- Airflow: `8080`
 
 ## Airflow
 
