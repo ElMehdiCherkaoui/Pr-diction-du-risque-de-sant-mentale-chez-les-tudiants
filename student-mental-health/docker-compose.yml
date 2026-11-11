@@ -29,14 +29,16 @@ services:
     environment:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW_ADMIN_USERNAME: admin
+      AIRFLOW_ADMIN_PASSWORD: admin
     command:
       - bash
       - -c
       - |
         airflow db migrate
         airflow users create \
-          --username admin \
-          --password admin \
+          --username "$$AIRFLOW_ADMIN_USERNAME" \
+          --password "$$AIRFLOW_ADMIN_PASSWORD" \
           --firstname Admin \
           --lastname User \
           --role Admin \
