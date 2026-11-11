@@ -3,13 +3,19 @@ from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from src.pipeline import evaluate_model, load_processed_data, save_model, train_model
+from src.pipeline import (
+    evaluate_model,
+    load_processed_data,
+    preprocess_data,
+    save_model,
+    train_model,
+)
 
 
 def prepare_data():
-    """Check that Notebook 02 created the processed data files."""
-    load_processed_data()
-    print("Processed data is ready.")
+    """Prepare the current raw data and save processed CSV files."""
+    preprocess_data()
+    print("Raw data was preprocessed and saved.")
 
 
 def train():

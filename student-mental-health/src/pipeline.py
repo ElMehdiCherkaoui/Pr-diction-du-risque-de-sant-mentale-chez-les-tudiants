@@ -14,15 +14,89 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+RAW_DATA_PATH = ROOT_DIR / "data" / "raw" / "student_mental_health.csv"
 PROCESSED_DIR = ROOT_DIR / "data" / "processed"
 MODEL_PATH = ROOT_DIR / "models" / "student_mental_health_pipeline.joblib"
 
 
+def preprocess_data():
+    """Prepare the current raw data and save the four processed CSV files."""
+    data = pd.read_csv(RAW_DATA_PATH)
+    X = data.drop(columns=["Student_ID", "Mental_Health_Risk"])
+    y = data["Mental_Health_Risk"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.20,
+        random_state=42,
+        stratify=y,
+    )
+
+    numeric_columns = X_train.select_dtypes(include="number").columns.tolist()
+    categorical_columns = X_train.select_dtypes(exclude="number").columns.tolist()
+    numeric_pipeline = Pipeline(
+        [
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+        ]
+    )
+    categorical_pipeline = Pipeline(
+        [
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("encoder", OneHotEncoder(handle_unknown="ignore")),
+        ]
+    )
+
+    X_train_numeric = numeric_pipeline.fit_transform(X_train[numeric_columns])
+    X_test_numeric = numeric_pipeline.transform(X_test[numeric_columns])
+    X_train_categorical = categorical_pipeline.fit_transform(
+        X_train[categorical_columns]
+    )
+    X_test_categorical = categorical_pipeline.transform(X_test[categorical_columns])
+    categorical_names = categorical_pipeline.named_steps[
+        "encoder"
+    ].get_feature_names_out(categorical_columns)
+
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    X_train_numeric = pd.DataFrame(
+        X_train_numeric, columns=numeric_columns, index=X_train.index
+    )
+    X_test_numeric = pd.DataFrame(
+        X_test_numeric, columns=numeric_columns, index=X_test.index
+    )
+    X_train_categorical = pd.DataFrame(
+        X_train_categorical.toarray(),
+        columns=categorical_names,
+        index=X_train.index,
+    )
+    X_test_categorical = pd.DataFrame(
+        X_test_categorical.toarray(),
+        columns=categorical_names,
+        index=X_test.index,
+    )
+    X_train_processed = pd.concat([X_train_numeric, X_train_categorical], axis=1)
+    X_test_processed = pd.concat([X_test_numeric, X_test_categorical], axis=1)
+    X_train_processed.to_csv(PROCESSED_DIR / "X_train.csv", index=False)
+    X_test_processed.to_csv(PROCESSED_DIR / "X_test.csv", index=False)
+    y_train.to_frame(name="Mental_Health_Risk").to_csv(
+        PROCESSED_DIR / "y_train.csv", index=False
+    )
+    y_test.to_frame(name="Mental_Health_Risk").to_csv(
+        PROCESSED_DIR / "y_test.csv", index=False
+    )
+
+    return X_train, X_test, y_train, y_test
+
+
 def load_processed_data():
-    """Load the four processed CSV files created by Notebook 02."""
+    """Load the four processed CSV files."""
     X_train = pd.read_csv(PROCESSED_DIR / "X_train.csv")
     X_test = pd.read_csv(PROCESSED_DIR / "X_test.csv")
     y_train = pd.read_csv(PROCESSED_DIR / "y_train.csv").squeeze("columns")
@@ -95,7 +169,8 @@ def save_model(model):
 
 
 def run_pipeline():
-    """Run training, evaluation, and model saving."""
+    """Preprocess current data, train, evaluate, and save the model."""
+    preprocess_data()
     X_train, X_test, y_train, y_test = load_processed_data()
     best_name, model, searches = train_model(X_train, y_train)
     metrics, matrix = evaluate_model(model, X_test, y_test)

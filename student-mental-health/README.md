@@ -14,8 +14,12 @@ From the project folder:
 python src/pipeline.py
 ```
 
-The pipeline reads the four files in `data/processed/`, trains two models,
-selects the best one, evaluates it, and saves the model in `models/`.
+The pipeline reads the current file in `data/raw/`, preprocesses it, saves
+new train/test CSV files in `data/processed/`, trains two models, selects the
+best one, evaluates it, and saves the model in `models/`.
+
+If you add new labelled rows to the raw CSV, run the pipeline again. The
+processed data and model will be rebuilt using the new rows.
 
 ## Run Streamlit
 
@@ -38,7 +42,7 @@ The application also uses port `8501`.
 Copy or mount `airflow/dags/mental_health_pipeline.py` into the Airflow DAGs
 folder. It runs these tasks in order:
 
-1. Check processed data
+1. Prepare raw data and save processed data
 2. Train and save the model
 3. Evaluate the model
 
