@@ -1,4 +1,3 @@
-from pathlib import Path
 
 import joblib
 import pandas as pd
@@ -17,30 +16,35 @@ from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from pathlib import Path
 
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-RAW_DATA_PATH = ROOT_DIR / "data" / "raw" / "student_mental_health.csv"
-PROCESSED_DIR = ROOT_DIR / "data" / "processed"
-MODEL_PATH = ROOT_DIR / "models" / "student_mental_health_pipeline.joblib"
+
+RAW_DATA_PATH = Path('/home/mestry/Documents/youcode/Pr-diction-du-risque-de-sant-mentale-chez-les-tudiants/student-mental-health/data/raw/student_mental_health.csv')
+PROCESSED_DIR = Path('/home/mestry/Documents/youcode/Pr-diction-du-risque-de-sant-mentale-chez-les-tudiants/student-mental-health/data/processed')
+MODEL_PATH = Path('/home/mestry/Documents/youcode/Pr-diction-du-risque-de-sant-mentale-chez-les-tudiants/student-mental-health/models/student_mental_health_pipeline.joblib')
 
 
 def preprocess_data():
-    """Prepare the current raw data and save the four processed CSV files."""
     data = pd.read_csv(RAW_DATA_PATH)
+    
     X = data.drop(columns=["Student_ID", "Mental_Health_Risk"])
+    
     y = data["Mental_Health_Risk"]
 
-    X_train, X_test, y_train, y_test = split_raw_data(X, y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
 
     numeric_columns = X_train.select_dtypes(include="number").columns.tolist()
+    
     categorical_columns = X_train.select_dtypes(exclude="number").columns.tolist()
+    
     numeric_pipeline = Pipeline(
         [
             ("imputer", SimpleImputer(strategy="median")),
             ("scaler", StandardScaler()),
         ]
     )
+    
     categorical_pipeline = Pipeline(
         [
             ("imputer", SimpleImputer(strategy="most_frequent")),
@@ -49,11 +53,15 @@ def preprocess_data():
     )
 
     X_train_numeric = numeric_pipeline.fit_transform(X_train[numeric_columns])
+    
     X_test_numeric = numeric_pipeline.transform(X_test[numeric_columns])
+    
     X_train_categorical = categorical_pipeline.fit_transform(
         X_train[categorical_columns]
     )
+    
     X_test_categorical = categorical_pipeline.transform(X_test[categorical_columns])
+    
     categorical_names = categorical_pipeline.named_steps[
         "encoder"
     ].get_feature_names_out(categorical_columns)
@@ -86,18 +94,6 @@ def preprocess_data():
     )
     y_test.to_frame(name="Mental_Health_Risk").to_csv(
         PROCESSED_DIR / "y_test.csv", index=False
-    )
-    return X_train, X_test, y_train, y_test
-
-
-def split_raw_data(X, y):
-    """Create the same reproducible 80/20 split used by preprocessing."""
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.20,
-        random_state=42,
-        stratify=y,
     )
     return X_train, X_test, y_train, y_test
 
