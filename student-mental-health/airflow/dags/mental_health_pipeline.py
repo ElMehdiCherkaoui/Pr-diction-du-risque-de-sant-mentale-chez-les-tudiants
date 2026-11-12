@@ -15,14 +15,13 @@ from src.pipeline import (
 
 def prepare_data():
     preprocess_data()
-    print("Raw data was preprocessed and saved.")
 
 
 def train():
     X_train, _, y_train, _ = load_processed_data()
     best_name, model = train_model(X_train, y_train)
+    print(f"Best model: {best_name}")
     save_model(model)
-    print(f"Selected model: {best_name}")
 
 
 def evaluate():
