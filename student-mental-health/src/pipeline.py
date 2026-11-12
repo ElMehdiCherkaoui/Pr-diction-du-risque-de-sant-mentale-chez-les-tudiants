@@ -23,6 +23,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 RAW_DATA_PATH = ROOT_DIR / "data" / "raw" / "student_mental_health.csv"
 PROCESSED_DIR = ROOT_DIR / "data" / "processed"
 MODEL_PATH = ROOT_DIR / "models" / "student_mental_health_pipeline.joblib"
+PREPROCESSOR_PATH = ROOT_DIR / "models" / "preprocessing.joblib"
 
 
 def preprocess_data():
@@ -67,34 +68,53 @@ def preprocess_data():
     ].get_feature_names_out(categorical_columns)
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    
     X_train_numeric = pd.DataFrame(
         X_train_numeric, columns=numeric_columns, index=X_train.index
     )
+    
     X_test_numeric = pd.DataFrame(
         X_test_numeric, columns=numeric_columns, index=X_test.index
     )
+    
     X_train_categorical = pd.DataFrame(
         X_train_categorical.toarray(),
         columns=categorical_names,
         index=X_train.index,
     )
+    
     X_test_categorical = pd.DataFrame(
         X_test_categorical.toarray(),
         columns=categorical_names,
         index=X_test.index,
     )
+    
     pd.concat([X_train_numeric, X_train_categorical], axis=1).to_csv(
         PROCESSED_DIR / "X_train.csv", index=False
     )
+    
     pd.concat([X_test_numeric, X_test_categorical], axis=1).to_csv(
         PROCESSED_DIR / "X_test.csv", index=False
     )
+    
     y_train.to_frame(name="Mental_Health_Risk").to_csv(
         PROCESSED_DIR / "y_train.csv", index=False
     )
+    
     y_test.to_frame(name="Mental_Health_Risk").to_csv(
         PROCESSED_DIR / "y_test.csv", index=False
     )
+    
+    PREPROCESSOR_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    joblib.dump(
+        {
+            "numeric": numeric_pipeline,
+            "categorical": categorical_pipeline
+        },
+        PREPROCESSOR_PATH
+    )
+    
     return X_train, X_test, y_train, y_test
 
 
@@ -117,10 +137,29 @@ def train_model(X_train, y_train):
         cv=5,
         scoring="f1_macro"
     )
-
+    
+    rf = GridSearchCV(
+        RandomForestClassifier(random_state=42),
+        {
+            "n_estimators": [50, 100, 200],
+            "max_depth": [None, 10, 20, 30],
+            "min_samples_split": [2, 5, 10],
+            "min_samples_leaf": [1, 2, 4],
+            "class_weight": [None, "balanced"]
+        },
+        cv=5,
+        scoring="f1_macro"
+    )
     lr.fit(X_train, y_train)
-    best_model = lr.best_estimator_
-    best_name = "Logistic Regression"
+    rf.fit(X_train, y_train)
+    if lr.best_score_ > rf.best_score_:
+        best_model = lr.best_estimator_
+        best_name = "Logistic Regression"
+    else:
+        best_model = rf.best_estimator_
+        best_name = "Random Forest"
+
+    
     return best_name, best_model
 
 
@@ -150,14 +189,12 @@ def save_model(model):
     joblib.dump(model, MODEL_PATH)
     return MODEL_PATH
 
-
 def load_model():
     return joblib.load(MODEL_PATH)
 
 
 def run_pipeline():
-    preprocess_data()
-    X_train, X_test, y_train, y_test = load_processed_data()
+    X_train, X_test, y_train, y_test =  preprocess_data()
     best_name, model = train_model(X_train, y_train)
     metrics, matrix = evaluate_model(model, X_test, y_test)
     save_model(model)
@@ -165,7 +202,7 @@ def run_pipeline():
         "model_name": best_name,
         "metrics": metrics,
         "confusion_matrix": matrix,
-        "cv_scores": model.cv_results_ if hasattr(model, "cv_results_") else None,
+        "cv_scores": model.cv_results_ or {},
     }
 
 
